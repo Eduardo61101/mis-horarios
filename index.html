@@ -22,36 +22,16 @@ table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
 th,td{border:1px solid #334155;padding:6px;text-align:center}
 th{background:#334155}
 
-.past{background:#020617 !important;color:#64748b}
-.current{background:#22c55e !important;color:black;font-weight:bold}
 .hidden{display:none}
-
 .card{background:#1e293b;padding:12px;border-radius:14px;margin-top:12px}
 
-/* 🔒 candado */
-.lock-btn{
-  position:fixed;
-  bottom:14px;
-  right:14px;
-  width:52px;
-  height:52px;
-  border-radius:50%;
-  background:#22c55e;
-  color:black;
-  font-size:22px;
-  border:none;
-  box-shadow:0 6px 18px rgba(0,0,0,.4);
-}
-
-@media (max-width:600px){
-  table{font-size:10px}
-  button,select,input{font-size:13px}
-}
+.lock-btn{position:fixed;bottom:14px;right:14px;width:52px;height:52px;border-radius:50%;background:#22c55e;color:black;font-size:22px;border:none;box-shadow:0 6px 18px rgba(0,0,0,.4)}
 </style></head>
 <body><!-- 🔝 BARRA SUPERIOR --><div class="topbar">
-  <button id="btnHome" onclick="volverInicio()">🏠 Home</button>
+  <!-- 🔴 Home OCULTO hasta que pongas la llave -->
+  <button id="btnHome" class="hidden" onclick="volverInicio()">🏠 Home</button>
   <button id="btnHorarios" onclick="verGuardados()">📚 Horarios</button>
-</div><header>📚 Organizador de Horarios</header><div class="container"><!-- INICIO --><div id="pantallaInicio" class="card">
+</div><header>📚 Organizador de Horarios</header><div class="container"><!-- HOME (solo admin) --><div id="pantallaInicio" class="card hidden">
   <div class="menu">
     <button onclick="irCrear('escolar')">📘 Escolar</button>
     <button onclick="irCrear('personal')">🗓️ Personal</button>
@@ -60,55 +40,37 @@ th{background:#334155}
   </div>
 </div><!-- CONFIG --><div id="pantallaConfig" class="card hidden">
   <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>  <div id="bloqueEscolar">
-    <div>
-      Nivel:
-      <select id="nivel">
-        <option value="primaria">Primaria</option>
-        <option value="secundaria">Secundaria</option>
-        <option value="prepa">Prepa</option>
-        <option value="uni">Universidad</option>
-      </select>Grado:
-  <select id="grado"></select>
-</div>
+    Nivel:
+    <select id="nivel">
+      <option value="primaria">Primaria</option>
+      <option value="secundaria">Secundaria</option>
+      <option value="prepa">Prepa</option>
+      <option value="uni">Universidad</option>
+    </select>Grado:
+<select id="grado"></select>
 
-<div>
-  Turno:
-  <select id="turno">
-    <option value="manana">Mañana</option>
-    <option value="tarde">Tarde</option>
-  </select>
+Turno:
+<select id="turno">
+  <option value="manana">Mañana</option>
+  <option value="tarde">Tarde</option>
+</select>
 
-  Horas:
-  <select id="numHoras">
-    <option>5</option><option>6</option><option>7</option><option>8</option>
-  </select>
-</div>
-
-  </div>  <div id="bloqueLibre" class="hidden">
-    <div>
-      Nombre de actividad:
-      <input id="nombreLibre" placeholder="Ej: Gym, Tarea...">
-    </div><div>
-  Horas:
-  <select id="numHorasLibre">
-    <option>3</option><option>4</option><option>5</option><option>6</option>
-  </select>
-</div>
+Horas:
+<select id="numHoras">
+  <option>5</option><option>6</option><option>7</option><option>8</option>
+</select>
 
   </div><button onclick="crearHorario()">Crear horario</button>
 
 </div><!-- HORARIO --><div id="pantallaHorario" class="card hidden">
   <button class="secondary" onclick="volverConfig()">⬅️ Regresar</button>
-  <button id="btnGuardar" onclick="guardarHorario()">💾 Guardar horario</button>
+  <button id="btnGuardar" class="hidden" onclick="guardarHorario()">💾 Guardar horario</button>
   <table id="tabla"></table>
-</div><!-- LISTA --><div id="pantallaGuardados" class="card hidden">
-  <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>
+</div><!-- LISTA (visible para todos) --><div id="pantallaGuardados" class="card">
   <div id="listaHorarios"></div>
-</div></div><!-- 🔒 CANDADO --><button class="lock-btn" onclick="pedirLlave()">🔒</button>
+</div></div><button class="lock-btn" onclick="pedirLlave()">🔒</button>
 
 <script type="module">
-
-// 🔥 Firebase
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -126,10 +88,30 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 🔑 CONFIG
+// 🔑
 const LLAVE = "Eduardo61101";
 let esAdmin = false;
 let modoActual = "escolar";
+
+// ---------- ADMIN LOCK ----------
+window.pedirLlave = () => {
+  const k = prompt("🔑 Ingresa la llave");
+
+  if (k === LLAVE) {
+    esAdmin = true;
+
+    // ✅ ahora sí mostrar cosas de admin
+    document.getElementById("btnHome").classList.remove("hidden");
+    document.getElementById("btnGuardar").classList.remove("hidden");
+
+    // ir al home automáticamente
+    mostrar("pantallaInicio");
+
+    alert("Modo admin activado 😎");
+  } else {
+    alert("Llave incorrecta");
+  }
+};
 
 // ---------- DATOS ----------
 const materiasPorNivel={
@@ -154,26 +136,8 @@ function mostrar(id){
   document.getElementById(id).classList.remove("hidden");
 }
 
-window.volverInicio=()=>mostrar("pantallaInicio");
-window.volverConfig=()=>mostrar("pantallaConfig");
-
-// ---------- ADMIN LOCK ----------
-window.pedirLlave=()=>{
-  const k=prompt("🔑 Ingresa la llave");
-  if(k===LLAVE){
-    esAdmin=true;
-    document.getElementById("btnHome").style.display="inline-block";
-    document.getElementById("btnGuardar").style.display="inline-block";
-    alert("Modo admin activado 😎");
-  }else{
-    alert("Llave incorrecta");
-  }
-};
-
-// al inicio ocultar cosas de admin
-if(!esAdmin){
-  document.getElementById("btnGuardar").style.display="none";
-}
+window.volverInicio = () => mostrar("pantallaInicio");
+window.volverConfig = () => mostrar("pantallaConfig");
 
 // ---------- GRADOS ----------
 function cargarGrados(){
@@ -193,14 +157,6 @@ cargarGrados();
 window.irCrear=(modo)=>{
   modoActual=modo;
   mostrar("pantallaConfig");
-
-  if(modo==='escolar'){
-    document.getElementById('bloqueEscolar').classList.remove('hidden');
-    document.getElementById('bloqueLibre').classList.add('hidden');
-  }else{
-    document.getElementById('bloqueEscolar').classList.add('hidden');
-    document.getElementById('bloqueLibre').classList.remove('hidden');
-  }
 };
 
 function crearSelectMateria(){
@@ -221,39 +177,37 @@ window.crearHorario=()=>{
 
   tabla.innerHTML="<tr><th>Hora</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th></tr>";
 
-  if(modoActual==='escolar'){
-    const turno=document.getElementById("turno").value;
-    const num=parseInt(document.getElementById("numHoras").value);
+  const turno=document.getElementById("turno").value;
+  const num=parseInt(document.getElementById("numHoras").value);
 
-    for(let i=0;i<num;i++){
-      const [ini,fin]=horarios[turno][i];
-      const tr=document.createElement("tr");
+  for(let i=0;i<num;i++){
+    const [ini,fin]=horarios[turno][i];
+    const tr=document.createElement("tr");
 
-      const tdHora=document.createElement("td");
-      tdHora.textContent=`${ini}-${fin}`;
-      tr.appendChild(tdHora);
+    const tdHora=document.createElement("td");
+    tdHora.textContent=`${ini}-${fin}`;
+    tr.appendChild(tdHora);
 
-      for(let d=0;d<5;d++){
-        const td=document.createElement("td");
-        td.appendChild(crearSelectMateria());
-        tr.appendChild(td);
-      }
-
-      tabla.appendChild(tr);
+    for(let d=0;d<5;d++){
+      const td=document.createElement("td");
+      td.appendChild(crearSelectMateria());
+      tr.appendChild(td);
     }
+
+    tabla.appendChild(tr);
   }
 };
 
 // ---------- GUARDAR ----------
 window.guardarHorario=()=>{
-  if(!esAdmin){ alert("🔒 Solo el admin puede guardar"); return; }
+  if(!esAdmin){ alert("🔒 Solo admin"); return; }
 
   const nombre=prompt("Nombre del horario");
   if(!nombre) return;
 
   const tablaHTML=document.getElementById("tabla").innerHTML;
   push(ref(db,"horarios"),{nombre,tabla:tablaHTML});
-  alert("Guardado y visible para todos ✅");
+  alert("Guardado ✅");
 };
 
 // ---------- VER ----------
@@ -294,4 +248,4 @@ window.eliminarHorario=(id)=>{
 };
 
 </script></body>
-  </html>
+</html>
