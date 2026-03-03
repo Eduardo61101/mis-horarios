@@ -1,180 +1,297 @@
 <!DOCTYPE html><html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Horarios</title>  <!-- Firebase -->  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>  <style>
-    body{
-      font-family: system-ui, Arial;
-      margin:0;
-      background:#f4f6fb;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Mis Horarios</title><style>
+*{box-sizing:border-box;font-family:system-ui,Arial}
+body{margin:0;background:#0f172a;color:white}
 
-    header{
-      background:#6c63ff;
-      color:white;
-      padding:14px;
-      text-align:center;
-      font-weight:700;
-      font-size:18px;
-    }
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#020617;position:sticky;top:0;z-index:10}
+.topbar button{background:#334155;color:white;font-size:13px;padding:8px 12px;border:none;border-radius:10px}
 
-    nav{
-      display:flex;
-      gap:8px;
-      padding:10px;
-      background:white;
-      border-bottom:1px solid #eee;
-      justify-content:center;
-      flex-wrap:wrap;
-    }
+header{padding:10px;text-align:center;background:#111827;font-size:18px;font-weight:bold}
+.container{padding:14px;max-width:900px;margin:auto}
 
-    button{
-      border:none;
-      padding:10px 14px;
-      border-radius:12px;
-      background:#e9ecff;
-      font-weight:600;
-      cursor:pointer;
-    }
+button,select,input{padding:10px;border-radius:10px;border:none;margin:6px 4px;font-size:14px}
+button{background:#22c55e;color:black;font-weight:bold}
+button.secondary{background:#334155;color:white}
 
-    button.primary{
-      background:#6c63ff;
-      color:white;
-    }
+.menu{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 
-    .screen{ display:none; padding:14px; }
-    .active{ display:block; }
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
+th,td{border:1px solid #334155;padding:6px;text-align:center}
+th{background:#334155}
 
-    .card{
-      background:white;
-      padding:14px;
-      border-radius:16px;
-      margin-bottom:10px;
-      box-shadow:0 4px 14px rgba(0,0,0,.06);
-    }
+.past{background:#020617 !important;color:#64748b}
+.current{background:#22c55e !important;color:black;font-weight:bold}
+.hidden{display:none}
 
-    /* Candado */
-    .lock{
-      position:fixed;
-      right:14px;
-      bottom:14px;
-      width:56px;
-      height:56px;
-      border-radius:50%;
-      background:#6c63ff;
-      color:white;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:24px;
-      cursor:pointer;
-      box-shadow:0 6px 18px rgba(0,0,0,.25);
-      z-index:999;
-    }
-  </style></head>
-<body><header>📅 Horarios</header><nav id="navBar"></nav><!-- HOME (solo admin) --><div id="home" class="screen">
-  <div class="card">
-    <h3>Crear horario escolar</h3>
-    <input id="nombreHorario" placeholder="Nombre del horario" style="width:100%;padding:10px;border-radius:10px;border:1px solid #ddd;margin-bottom:10px;">
-    <button class="primary" onclick="guardarHorario()">Guardar horario</button>
+.card{background:#1e293b;padding:12px;border-radius:14px;margin-top:12px}
+
+/* 🔒 candado */
+.lock-btn{
+  position:fixed;
+  bottom:14px;
+  right:14px;
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  background:#22c55e;
+  color:black;
+  font-size:22px;
+  border:none;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);
+}
+
+@media (max-width:600px){
+  table{font-size:10px}
+  button,select,input{font-size:13px}
+}
+</style></head>
+<body><!-- 🔝 BARRA SUPERIOR --><div class="topbar">
+  <button id="btnHome" onclick="volverInicio()">🏠 Home</button>
+  <button id="btnHorarios" onclick="verGuardados()">📚 Horarios</button>
+</div><header>📚 Organizador de Horarios</header><div class="container"><!-- INICIO --><div id="pantallaInicio" class="card">
+  <div class="menu">
+    <button onclick="irCrear('escolar')">📘 Escolar</button>
+    <button onclick="irCrear('personal')">🗓️ Personal</button>
+    <button onclick="irCrear('actividades')">🏀 Actividades</button>
+    <button onclick="irCrear('extra')">⭐ Extra</button>
   </div>
-</div><!-- HORARIOS (público) --><div id="horarios" class="screen active"></div><!-- Candado --><div class="lock" onclick="activarAdmin()">🔒</div><script>
-  // 🔥 Firebase config (TUYA)
-  const firebaseConfig = {
-    apiKey: "AIzaSyBBODZcEB4yIm2-UjpjveBy2tr7RDT-hYo",
-    authDomain: "estudio-sermiteop.firebaseapp.com",
-    databaseURL: "https://estudio-sermiteop-default-rtdb.firebaseio.com",
-    projectId: "estudio-sermiteop",
-    storageBucket: "estudio-sermiteop.firebasestorage.app",
-    messagingSenderId: "223030697007",
-    appId: "1:223030697007:web:fe4aa6b863b7ebf521bada",
-    measurementId: "G-NMD0ZC8ZX7"
-  };
+</div><!-- CONFIG --><div id="pantallaConfig" class="card hidden">
+  <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>  <div id="bloqueEscolar">
+    <div>
+      Nivel:
+      <select id="nivel">
+        <option value="primaria">Primaria</option>
+        <option value="secundaria">Secundaria</option>
+        <option value="prepa">Prepa</option>
+        <option value="uni">Universidad</option>
+      </select>Grado:
+  <select id="grado"></select>
+</div>
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+<div>
+  Turno:
+  <select id="turno">
+    <option value="manana">Mañana</option>
+    <option value="tarde">Tarde</option>
+  </select>
 
-  const ADMIN_KEY = "Eduardo61101";
-  let esAdmin = false;
+  Horas:
+  <select id="numHoras">
+    <option>5</option><option>6</option><option>7</option><option>8</option>
+  </select>
+</div>
 
-  // 🔐 Activar modo admin
-  function activarAdmin(){
-    const key = prompt("🔑 Llave de administrador");
-    if(key === ADMIN_KEY){
-      esAdmin = true;
-      alert("Modo admin activado 😎");
-      renderNav();
-      mostrar('home');
-    }else{
-      alert("Llave incorrecta");
+  </div>  <div id="bloqueLibre" class="hidden">
+    <div>
+      Nombre de actividad:
+      <input id="nombreLibre" placeholder="Ej: Gym, Tarea...">
+    </div><div>
+  Horas:
+  <select id="numHorasLibre">
+    <option>3</option><option>4</option><option>5</option><option>6</option>
+  </select>
+</div>
+
+  </div><button onclick="crearHorario()">Crear horario</button>
+
+</div><!-- HORARIO --><div id="pantallaHorario" class="card hidden">
+  <button class="secondary" onclick="volverConfig()">⬅️ Regresar</button>
+  <button id="btnGuardar" onclick="guardarHorario()">💾 Guardar horario</button>
+  <table id="tabla"></table>
+</div><!-- LISTA --><div id="pantallaGuardados" class="card hidden">
+  <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>
+  <div id="listaHorarios"></div>
+</div></div><!-- 🔒 CANDADO --><button class="lock-btn" onclick="pedirLlave()">🔒</button>
+
+<script type="module">
+
+// 🔥 Firebase
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBBODZcEB4yIm2-UjpjveBy2tr7RDT-hYo",
+  authDomain: "estudio-sermiteop.firebaseapp.com",
+  databaseURL: "https://estudio-sermiteop-default-rtdb.firebaseio.com",
+  projectId: "estudio-sermiteop",
+  storageBucket: "estudio-sermiteop.firebasestorage.app",
+  messagingSenderId: "223030697007",
+  appId: "1:223030697007:web:fe4aa6b863b7ebf521bada",
+  measurementId: "G-NMD0ZC8ZX7"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// 🔑 CONFIG
+const LLAVE = "Eduardo61101";
+let esAdmin = false;
+let modoActual = "escolar";
+
+// ---------- DATOS ----------
+const materiasPorNivel={
+  primaria:["Español","Mate","Ciencias","Inglés","Artes","Educación Física","Tutoría","Curricular"],
+  secundaria:["Mate","Español","Ciencias","Inglés","Historia","F.C.E","Educación Física","Tecnología","Artes","Tutoría"],
+  prepa:["Mate","Física","Química","Inglés","Historia","Ética","Computación","Artes"],
+  uni:["Materia 1","Materia 2","Materia 3","Laboratorio","Proyecto"]
+};
+
+const gradosPorNivel={primaria:6,secundaria:3,prepa:3,uni:8};
+
+const horarios={
+  manana:[["07:00","07:50"],["07:50","08:40"],["08:40","09:30"],["09:30","10:20"],["10:20","11:10"],["11:10","12:00"],["12:00","12:50"],["12:50","13:40"]],
+  tarde:[["13:00","13:50"],["13:50","14:40"],["14:40","15:30"],["15:30","16:20"],["16:20","17:10"],["17:10","18:00"],["18:00","18:50"],["18:50","19:40"]]
+};
+
+// ---------- UI ----------
+function mostrar(id){
+  ["pantallaInicio","pantallaConfig","pantallaHorario","pantallaGuardados"].forEach(x=>{
+    document.getElementById(x).classList.add("hidden");
+  });
+  document.getElementById(id).classList.remove("hidden");
+}
+
+window.volverInicio=()=>mostrar("pantallaInicio");
+window.volverConfig=()=>mostrar("pantallaConfig");
+
+// ---------- ADMIN LOCK ----------
+window.pedirLlave=()=>{
+  const k=prompt("🔑 Ingresa la llave");
+  if(k===LLAVE){
+    esAdmin=true;
+    document.getElementById("btnHome").style.display="inline-block";
+    document.getElementById("btnGuardar").style.display="inline-block";
+    alert("Modo admin activado 😎");
+  }else{
+    alert("Llave incorrecta");
+  }
+};
+
+// al inicio ocultar cosas de admin
+if(!esAdmin){
+  document.getElementById("btnGuardar").style.display="none";
+}
+
+// ---------- GRADOS ----------
+function cargarGrados(){
+  const nivel=document.getElementById("nivel").value;
+  const sel=document.getElementById("grado");
+  sel.innerHTML="";
+  for(let i=1;i<=gradosPorNivel[nivel];i++){
+    const op=document.createElement("option");
+    op.textContent=i+"°";
+    sel.appendChild(op);
+  }
+}
+document.getElementById("nivel").addEventListener("change",cargarGrados);
+cargarGrados();
+
+// ---------- CREAR ----------
+window.irCrear=(modo)=>{
+  modoActual=modo;
+  mostrar("pantallaConfig");
+
+  if(modo==='escolar'){
+    document.getElementById('bloqueEscolar').classList.remove('hidden');
+    document.getElementById('bloqueLibre').classList.add('hidden');
+  }else{
+    document.getElementById('bloqueEscolar').classList.add('hidden');
+    document.getElementById('bloqueLibre').classList.remove('hidden');
+  }
+};
+
+function crearSelectMateria(){
+  const nivel=document.getElementById("nivel").value;
+  const s=document.createElement("select");
+  materiasPorNivel[nivel].forEach(m=>{
+    const op=document.createElement("option");
+    op.textContent=m;
+    s.appendChild(op);
+  });
+  return s;
+}
+
+window.crearHorario=()=>{
+  mostrar("pantallaHorario");
+  const tabla=document.getElementById("tabla");
+  tabla.innerHTML="";
+
+  tabla.innerHTML="<tr><th>Hora</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th></tr>";
+
+  if(modoActual==='escolar'){
+    const turno=document.getElementById("turno").value;
+    const num=parseInt(document.getElementById("numHoras").value);
+
+    for(let i=0;i<num;i++){
+      const [ini,fin]=horarios[turno][i];
+      const tr=document.createElement("tr");
+
+      const tdHora=document.createElement("td");
+      tdHora.textContent=`${ini}-${fin}`;
+      tr.appendChild(tdHora);
+
+      for(let d=0;d<5;d++){
+        const td=document.createElement("td");
+        td.appendChild(crearSelectMateria());
+        tr.appendChild(td);
+      }
+
+      tabla.appendChild(tr);
     }
   }
+};
 
-  // 🧭 Navegación dinámica
-  function renderNav(){
-    const nav = document.getElementById('navBar');
+// ---------- GUARDAR ----------
+window.guardarHorario=()=>{
+  if(!esAdmin){ alert("🔒 Solo el admin puede guardar"); return; }
 
-    if(esAdmin){
-      nav.innerHTML = `
-        <button onclick="mostrar('home')">Home</button>
-        <button onclick="mostrar('horarios')">Horarios</button>
-      `;
-    }else{
-      nav.innerHTML = `
-        <button onclick="mostrar('horarios')">Horarios</button>
-      `;
-    }
-  }
+  const nombre=prompt("Nombre del horario");
+  if(!nombre) return;
 
-  function mostrar(id){
-    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-  }
+  const tablaHTML=document.getElementById("tabla").innerHTML;
+  push(ref(db,"horarios"),{nombre,tabla:tablaHTML});
+  alert("Guardado y visible para todos ✅");
+};
 
-  // 💾 Guardar horario (solo admin)
-  function guardarHorario(){
-    if(!esAdmin){
-      alert("No autorizado");
+// ---------- VER ----------
+window.verGuardados=()=>{
+  mostrar("pantallaGuardados");
+  const cont=document.getElementById("listaHorarios");
+
+  onValue(ref(db,"horarios"),(snap)=>{
+    cont.innerHTML="";
+    if(!snap.exists()){
+      cont.innerHTML="No hay horarios";
       return;
     }
 
-    const nombre = document.getElementById('nombreHorario').value.trim();
-    if(!nombre) return alert("Pon un nombre");
+    snap.forEach(h=>{
+      const data=h.val();
+      const key=h.key;
 
-    const ref = db.ref('horarios').push();
-    ref.set({ nombre });
+      const div=document.createElement("div");
+      div.className="card";
 
-    document.getElementById('nombreHorario').value = '';
-  }
+      let btnEliminar="";
+      if(esAdmin){
+        btnEliminar=`<button onclick="eliminarHorario('${key}')">🗑️</button>`;
+      }
 
-  // 👀 Ver horarios en vivo
-  function escucharHorarios(){
-    const cont = document.getElementById('horarios');
-
-    db.ref('horarios').on('value', snap=>{
-      cont.innerHTML='';
-      snap.forEach(h=>{
-        const data = h.val();
-        const div = document.createElement('div');
-        div.className='card';
-
-        div.innerHTML = `
-          <b>${data.nombre}</b>
-          ${esAdmin ? `<br><button onclick="borrarHorario('${h.key}')">🗑 Borrar</button>` : ''}
-        `;
-
-        cont.appendChild(div);
-      });
+      div.innerHTML=`<b>${data.nombre}</b> ${btnEliminar}<table>${data.tabla}</table>`;
+      cont.appendChild(div);
     });
-  }
+  });
+};
 
-  function borrarHorario(id){
-    if(!esAdmin) return;
-    db.ref('horarios/'+id).remove();
+window.eliminarHorario=(id)=>{
+  if(!esAdmin) return;
+  if(confirm("¿Borrar horario?")){
+    remove(ref(db,"horarios/"+id));
   }
+};
 
-  // init
-  renderNav();
-  escucharHorarios();
 </script></body>
-</html>
+  </html>
