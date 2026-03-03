@@ -1,0 +1,375 @@
+<!DOCTYPE html><html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Mis Horarios</title><style>
+*{box-sizing:border-box;font-family:system-ui,Arial}
+body{margin:0;background:#0f172a;color:white}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 14px;
+  background:#020617;
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+
+.topbar button{
+  background:#334155;
+  color:white;
+  font-size:13px;
+  padding:8px 12px;
+}
+
+header{
+  padding:10px;
+  text-align:center;
+  background:#111827;
+  font-size:18px;
+  font-weight:bold
+}
+
+.container{padding:14px;max-width:900px;margin:auto}
+
+button,select,input{
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  margin:6px 4px;
+  font-size:14px;
+}
+
+button{background:#22c55e;color:black;font-weight:bold}
+button.secondary{background:#334155;color:white}
+
+.menu{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
+th,td{border:1px solid #334155;padding:6px;text-align:center}
+th{background:#334155}
+
+.past{background:#020617 !important;color:#64748b}
+.current{background:#22c55e !important;color:black;font-weight:bold}
+.hidden{display:none}
+
+.card{background:#1e293b;padding:12px;border-radius:14px;margin-top:12px}
+
+@media (max-width:600px){
+  table{font-size:10px}
+  button,select,input{font-size:13px}
+}
+</style></head>
+<body><!-- 🔝 BARRA SUPERIOR --><div class="topbar">
+  <button onclick="volverInicio()">🏠 Home</button>
+  <button onclick="verGuardados()">💾 Mis horarios</button>
+</div><header>📚 Organizador de Horarios</header><div class="container"><!-- MENU PRINCIPAL --><div id="pantallaInicio" class="card">
+  <div class="menu">
+    <button onclick="irCrear('escolar')">📘 Escolar</button>
+    <button onclick="irCrear('personal')">🗓️ Personal</button>
+    <button onclick="irCrear('actividades')">🏀 Actividades</button>
+    <button onclick="irCrear('extra')">⭐ Extra</button>
+  </div>
+</div><!-- CONFIGURAR --><div id="pantallaConfig" class="card hidden">
+  <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>  <!-- SOLO ESCOLAR -->  <div id="bloqueEscolar">
+    <div>
+      Nivel:
+      <select id="nivel">
+        <option value="primaria">Primaria</option>
+        <option value="secundaria">Secundaria</option>
+        <option value="prepa">Prepa</option>
+        <option value="uni">Universidad</option>
+      </select>Grado:
+  <select id="grado"></select>
+</div>
+
+<div>
+  Turno:
+  <select id="turno">
+    <option value="manana">Mañana</option>
+    <option value="tarde">Tarde</option>
+  </select>
+
+  Horas:
+  <select id="numHoras">
+    <option>5</option>
+    <option>6</option>
+    <option>7</option>
+    <option>8</option>
+  </select>
+</div>
+
+  </div>  <!-- MODOS LIBRES -->  <div id="bloqueLibre" class="hidden">
+    <div>
+      Nombre de actividad:
+      <input id="nombreLibre" placeholder="Ej: Gym, Tarea...">
+    </div><div>
+  Horas:
+  <select id="numHorasLibre">
+    <option>3</option>
+    <option>4</option>
+    <option>5</option>
+    <option>6</option>
+  </select>
+</div>
+
+  </div><button onclick="crearHorario()">Crear horario</button>
+
+</div><!-- HORARIO --><div id="pantallaHorario" class="card hidden">
+  <button class="secondary" onclick="volverConfig()">⬅️ Regresar</button>
+  <button onclick="guardarHorario()">💾 Guardar horario</button>
+  <table id="tabla"></table>
+</div><!-- GUARDADOS --><div id="pantallaGuardados" class="card hidden">
+  <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>
+  <div id="listaHorarios"></div>
+</div></div><!-- FIREBASE --><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script><script>
+// ⚠️ PEGA AQUÍ TU CONFIG REAL
+const firebaseConfig = {
+  apiKey: "AIzaSyBBODZcEB4yIm2-UjpjveBy2tr7RDT-hYo",
+  authDomain: "estudio-sermiteop.firebaseapp.com",
+  projectId: "estudio-sermiteop",
+  storageBucket: "estudio-sermiteop.firebasestorage.app",
+  messagingSenderId: "223030697007",
+  appId: "1:223030697007:web:fe4aa6b863b7ebf521bada"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const ADMIN_KEY = "Eduardo61101";
+
+// ---------- DATOS ----------
+const materiasPorNivel={
+  primaria:["Español","Mate","Ciencias","Inglés","Artes","Educación Física","Tutoría","Curricular"],
+  secundaria:["Mate","Español","Ciencias","Inglés","Historia","F.C.E","Educación Física","Tecnología","Artes","Tutoría"],
+  prepa:["Mate","Física","Química","Inglés","Historia","Ética","Computación","Artes"],
+  uni:["Materia 1","Materia 2","Materia 3","Laboratorio","Proyecto"]
+};
+
+const gradosPorNivel={primaria:6,secundaria:3,prepa:3,uni:8};
+
+const horarios={
+  manana:[
+    ["07:00","07:50"],["07:50","08:40"],["08:40","09:30"],["09:30","10:20"],
+    ["10:20","11:10"],["11:10","12:00"],["12:00","12:50"],["12:50","13:40"]
+  ],
+  tarde:[
+    ["13:00","13:50"],["13:50","14:40"],["14:40","15:30"],["15:30","16:20"],
+    ["16:20","17:10"],["17:10","18:00"],["18:00","18:50"],["18:50","19:40"]
+  ]
+};
+
+let modoActual="escolar";
+
+// ---------- NAVEGACIÓN ----------
+function irCrear(modo){
+  modoActual=modo;
+  mostrar("pantallaConfig");
+
+  if(modo==='escolar'){
+    document.getElementById('bloqueEscolar').classList.remove('hidden');
+    document.getElementById('bloqueLibre').classList.add('hidden');
+    cargarGrados();
+  }else{
+    document.getElementById('bloqueEscolar').classList.add('hidden');
+    document.getElementById('bloqueLibre').classList.remove('hidden');
+  }
+}
+
+function volverInicio(){mostrar("pantallaInicio");}
+function volverConfig(){mostrar("pantallaConfig");}
+
+function mostrar(id){
+  ["pantallaInicio","pantallaConfig","pantallaHorario","pantallaGuardados"].forEach(x=>{
+    document.getElementById(x).classList.add("hidden");
+  });
+  document.getElementById(id).classList.remove("hidden");
+}
+
+// ---------- GRADOS ----------
+function cargarGrados(){
+  const nivel=document.getElementById("nivel").value;
+  const sel=document.getElementById("grado");
+  sel.innerHTML="";
+  for(let i=1;i<=gradosPorNivel[nivel];i++){
+    const op=document.createElement("option");
+    op.textContent=i+"°";
+    sel.appendChild(op);
+  }
+}
+
+document.getElementById("nivel").addEventListener("change",cargarGrados);
+cargarGrados();
+
+// ---------- SELECT MATERIA ----------
+function crearSelectMateria(){
+  const nivel=document.getElementById("nivel").value;
+  const s=document.createElement("select");
+  materiasPorNivel[nivel].forEach(m=>{
+    const op=document.createElement("option");
+    op.textContent=m;
+    s.appendChild(op);
+  });
+  return s;
+}
+
+// ---------- CREAR HORARIO ----------
+function crearHorario(){
+  mostrar("pantallaHorario");
+  const tabla=document.getElementById("tabla");
+  tabla.innerHTML="";
+
+  tabla.innerHTML="<tr><th>Hora</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th></tr>";
+
+  if(modoActual==='escolar'){
+    const turno=document.getElementById("turno").value;
+    const num=parseInt(document.getElementById("numHoras").value);
+
+    for(let i=0;i<num;i++){
+      const [ini,fin]=horarios[turno][i];
+      const tr=document.createElement("tr");
+      tr.dataset.start=ini;
+      tr.dataset.end=fin;
+
+      const tdHora=document.createElement("td");
+      tdHora.textContent=`${ini}-${fin}`;
+      tr.appendChild(tdHora);
+
+      for(let d=0;d<5;d++){
+        const td=document.createElement("td");
+        td.appendChild(crearSelectMateria());
+        tr.appendChild(td);
+      }
+
+      tabla.appendChild(tr);
+    }
+  }else{
+    const num=parseInt(document.getElementById("numHorasLibre").value);
+    const nombre=document.getElementById("nombreLibre").value||"Actividad";
+
+    for(let i=1;i<=num;i++){
+      const tr=document.createElement("tr");
+      const tdHora=document.createElement("td");
+      tdHora.textContent="Bloque "+i;
+      tr.appendChild(tdHora);
+
+      for(let d=0;d<5;d++){
+        const td=document.createElement("td");
+        td.textContent=nombre;
+        tr.appendChild(td);
+      }
+
+      tabla.appendChild(tr);
+    }
+  }
+
+  actualizar();
+}
+
+// ---------- GUARDAR EN FIREBASE ----------
+async function guardarHorario(){
+  if(modoActual !== 'escolar'){
+    alert('Solo los horarios escolares se publican');
+    return;
+  }
+
+  const nombre = prompt("Pon nombre al horario:");
+  if(!nombre) return;
+
+  const tablaHTML = document.getElementById("tabla").innerHTML;
+
+  try{
+    await db.collection("horarios").add({
+      nombre: nombre,
+      tabla: tablaHTML,
+      adminKey: ADMIN_KEY,
+      creado: Date.now()
+    });
+
+    alert("Horario subido 🌐");
+  }catch(e){
+    alert("Error al subir");
+    console.error(e);
+  }
+}
+
+// ---------- VER GUARDADOS ----------
+function verGuardados(){
+  mostrar("pantallaGuardados");
+  const cont = document.getElementById("listaHorarios");
+  cont.innerHTML = "Cargando...";
+
+  db.collection("horarios")
+    .orderBy("creado","desc")
+    .onSnapshot(snapshot=>{
+      cont.innerHTML="";
+
+      if(snapshot.empty){
+        cont.innerHTML="No hay horarios aún";
+        return;
+      }
+
+      snapshot.forEach(doc=>{
+        const data = doc.data();
+
+        const div=document.createElement("div");
+        div.className="card";
+        div.innerHTML=`
+          <b style="font-size:16px">${data.nombre}</b><br>
+          <button onclick="verHorario('${doc.id}')">Ver</button>
+          <button onclick="borrarHorario('${doc.id}')">🗑️</button>
+        `;
+        cont.appendChild(div);
+      });
+    });
+}
+
+// ---------- VER UNO ----------
+async function verHorario(id){
+  const docSnap = await db.collection("horarios").doc(id).get();
+  if(!docSnap.exists) return;
+
+  mostrar("pantallaHorario");
+  document.getElementById("tabla").innerHTML = docSnap.data().tabla;
+}
+
+// ---------- BORRAR ----------
+async function borrarHorario(id){
+  const key = prompt("Llave admin:");
+
+  if(key !== ADMIN_KEY){
+    alert("No autorizado");
+    return;
+  }
+
+  await db.collection("horarios").doc(id).delete();
+}
+
+// ---------- TIEMPO ----------
+function actualizar(){
+  const now=new Date();
+  const horaActual=now.getHours().toString().padStart(2,"0")+":"+
+                    now.getMinutes().toString().padStart(2,"0");
+  const dia=now.getDay();
+
+  document.querySelectorAll("#tabla tr[data-start]").forEach(fila=>{
+    const ini=fila.dataset.start;
+    const fin=fila.dataset.end;
+
+    for(let i=1;i<=5;i++){
+      fila.cells[i].classList.remove("past","current");
+    }
+
+    if(dia>=1 && dia<=5){
+      const celda=fila.cells[dia];
+      if(horaActual>=fin) celda.classList.add("past");
+      else if(horaActual>=ini && horaActual<fin) celda.classList.add("current");
+    }
+  });
+}
+
+setInterval(actualizar,30000);
+</script></body>
+</html>
