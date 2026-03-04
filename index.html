@@ -1,229 +1,250 @@
 <!DOCTYPE html><html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Horarios</title>  <!-- Firebase -->  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Horarios</title><!-- Firebase compat --><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script><style>
+*{box-sizing:border-box;font-family:system-ui,Arial}
+body{margin:0;background:#0f172a;color:white}
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBBODZcEB4yIm2-UjpjveBy2tr7RDT-hYo",
-      authDomain: "estudio-sermiteop.firebaseapp.com",
-      databaseURL: "https://estudio-sermiteop-default-rtdb.firebaseio.com",
-      projectId: "estudio-sermiteop",
-      storageBucket: "estudio-sermiteop.firebasestorage.app",
-      messagingSenderId: "223030697007",
-      appId: "1:223030697007:web:fe4aa6b863b7ebf521bada",
-      measurementId: "G-NMD0ZC8ZX7"
-    };
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  padding:10px;
+  background:#020617;
+}
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+.topbar button{
+  background:#334155;
+  color:white;
+  padding:8px 12px;
+  border:none;
+  border-radius:10px;
+}
 
-    // ===== ADMIN =====
-    let esAdmin = false;
-    const LLAVE = "Eduardo61101";
+header{padding:10px;text-align:center;background:#111827;font-weight:bold}
+.container{padding:14px;max-width:900px;margin:auto}
 
-    window.desbloquearAdmin = () => {
-      const clave = prompt("🔒 Ingresa la llave");
-      if (clave === LLAVE) {
-        esAdmin = true;
-        document.getElementById("btnHome").style.display = "inline-block";
-        alert("Modo admin activado 😎");
-      } else {
-        alert("Llave incorrecta ❌");
-      }
-    };
+button,select,input{
+  padding:10px;
+  border-radius:10px;
+  border:none;
+  margin:6px 4px;
+}
 
-    // ===== CREAR HORARIO =====
-    window.guardarHorario = async () => {
-      if (!esAdmin) {
-        alert("🔒 Solo admin");
-        return;
-      }
+button{background:#22c55e;color:black;font-weight:bold}
+button.secondary{background:#334155;color:white}
 
-      const nombre = prompt("Nombre del horario");
-      if (!nombre) return;
+.card{background:#1e293b;padding:12px;border-radius:14px;margin-top:12px}
+.hidden{display:none}
 
-      const tablaHTML = document.getElementById("tabla").innerHTML;
+.itemHorario{
+  background:#020617;
+  padding:10px;
+  border-radius:10px;
+  margin-top:8px;
+  cursor:pointer;
+}
 
-      try {
-        await push(ref(db, "horarios"), {
-          nombre,
-          tabla: tablaHTML
-        });
-        alert("Guardado ✅");
-        verGuardados();
-      } catch (err) {
-        console.error(err);
-        alert("Error al guardar ❌");
-      }
-    };
+.tablaWrap{margin-top:8px}
 
-    // ===== VER HORARIOS =====
-    window.verGuardados = () => {
-      const cont = document.getElementById("listaHorarios");
+.lockBtn{
+  position:fixed;
+  bottom:14px;
+  right:14px;
+  background:#334155;
+  border-radius:50%;
+  width:50px;
+  height:50px;
+  font-size:20px;
+}
 
-      onValue(ref(db, "horarios"), (snapshot) => {
-        cont.innerHTML = "";
-        const data = snapshot.val();
-        if (!data) {
-          cont.innerHTML = "<p>No hay horarios</p>";
-          return;
-        }
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
+th,td{border:1px solid #334155;padding:6px;text-align:center}
+th{background:#334155}
 
-        Object.entries(data).forEach(([id, h]) => {
-          const card = document.createElement("div");
-          card.className = "card";
+@media (max-width:600px){
+  table{font-size:10px}
+}
+</style></head>
+<body><div class="topbar">
+  <button id="btnHome" class="hidden" onclick="volverInicio()">🏠 Home</button>
+  <button onclick="verGuardados()">📂 Horarios</button>
+</div><header>📚 Horarios</header><div class="container"><!-- HOME --><div id="pantallaInicio" class="card hidden">
+  <button onclick="irCrear()">➕ Crear horario escolar</button>
+</div><!-- CONFIG --><div id="pantallaConfig" class="card hidden">
+  <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>  <div>
+    Horas:
+    <select id="numHoras">
+      <option>5</option>
+      <option>6</option>
+      <option>7</option>
+      <option>8</option>
+    </select>
+  </div><button onclick="crearHorario()">Crear horario</button>
 
-          const titulo = document.createElement("div");
-          titulo.className = "card-title";
-          titulo.textContent = "📅 " + h.nombre;
+</div><!-- TABLA --><div id="pantallaHorario" class="card hidden">
+  <button class="secondary" onclick="volverConfig()">⬅️ Regresar</button>
+  <button id="btnGuardar" onclick="guardarHorario()">💾 Guardar horario</button>
+  <table id="tabla"></table>
+</div><!-- LISTA --><div id="pantallaGuardados" class="card">
+  <div id="listaHorarios"></div>
+</div></div><button class="lockBtn" onclick="pedirLlave()">🔒</button>
 
-          const contenido = document.createElement("div");
-          contenido.className = "card-content";
-          contenido.innerHTML = h.tabla;
+<script>
+// 🔥 TU CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyBBODZcEB4yIm2-UjpjveBy2tr7RDT-hYo",
+  authDomain: "estudio-sermiteop.firebaseapp.com",
+  databaseURL: "https://estudio-sermiteop-default-rtdb.firebaseio.com",
+  projectId: "estudio-sermiteop",
+  storageBucket: "estudio-sermiteop.firebasestorage.app",
+  messagingSenderId: "223030697007",
+  appId: "1:223030697007:web:fe4aa6b863b7ebf521bada",
+  measurementId: "G-NMD0ZC8ZX7"
+};
 
-          // toggle mostrar/ocultar
-          titulo.onclick = () => {
-            contenido.style.display =
-              contenido.style.display === "none" ? "block" : "none";
-          };
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-          card.appendChild(titulo);
-          card.appendChild(contenido);
-          cont.appendChild(card);
-        });
-      });
-    };
+// 🔐 ADMIN
+let esAdmin = false;
+const LLAVE = "Eduardo61101";
 
-    // cargar al inicio
-    window.addEventListener("DOMContentLoaded", () => {
-      verGuardados();
-    });
-  </script>  <style>
-    body {
-      font-family: system-ui, Arial;
-      margin: 0;
-      background: #f2f4f8;
+function pedirLlave(){
+  const clave = prompt("Llave de admin");
+  if(clave === LLAVE){
+    esAdmin = true;
+    document.getElementById("btnHome").classList.remove("hidden");
+    document.getElementById("pantallaInicio").classList.remove("hidden");
+    alert("Modo admin activado ✅");
+  }else{
+    alert("Llave incorrecta");
+  }
+}
+
+// ---------- NAVEGACIÓN ----------
+function mostrar(id){
+  ["pantallaInicio","pantallaConfig","pantallaHorario","pantallaGuardados"].forEach(x=>{
+    document.getElementById(x).classList.add("hidden");
+  });
+  document.getElementById(id).classList.remove("hidden");
+}
+
+function volverInicio(){
+  if(!esAdmin) return;
+  mostrar("pantallaInicio");
+}
+
+function volverConfig(){
+  mostrar("pantallaConfig");
+}
+
+function irCrear(){
+  if(!esAdmin){
+    alert("🔒 Solo admin");
+    return;
+  }
+  mostrar("pantallaConfig");
+}
+
+// ---------- CREAR TABLA ----------
+function crearHorario(){
+  if(!esAdmin){
+    alert("🔒 Solo admin");
+    return;
+  }
+
+  mostrar("pantallaHorario");
+  const tabla=document.getElementById("tabla");
+  tabla.innerHTML="";
+
+  tabla.innerHTML="<tr><th>Hora</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th></tr>";
+
+  const num=parseInt(document.getElementById("numHoras").value);
+
+  for(let i=1;i<=num;i++){
+    const tr=document.createElement("tr");
+    const tdHora=document.createElement("td");
+    tdHora.textContent="Bloque "+i;
+    tr.appendChild(tdHora);
+
+    for(let d=0;d<5;d++){
+      const td=document.createElement("td");
+      td.contentEditable = true; // 👈 EDITABLE
+      td.textContent = "Materia";
+      tr.appendChild(td);
     }
 
-    header {
-      background: #4f46e5;
-      color: white;
-      padding: 12px;
-      text-align: center;
-      font-weight: bold;
+    tabla.appendChild(tr);
+  }
+}
+
+// ---------- GUARDAR ----------
+async function guardarHorario(){
+  if(!esAdmin){
+    alert("🔒 Solo admin");
+    return;
+  }
+
+  const nombre = prompt("Nombre del horario");
+  if(!nombre) return;
+
+  const tablaHTML=document.getElementById("tabla").innerHTML;
+
+  await db.ref("horarios").push({
+    nombre,
+    tabla: tablaHTML
+  });
+
+  alert("Guardado ✅");
+  verGuardados();
+}
+
+// ---------- VER HORARIOS (toggle) ----------
+function verGuardados(){
+  mostrar("pantallaGuardados");
+}
+
+function toggleTabla(el){
+  el.classList.toggle("hidden");
+}
+
+// 🔄 TIEMPO REAL
+firebase.database().ref("horarios").on("value", snap=>{
+  const cont=document.getElementById("listaHorarios");
+  cont.innerHTML="";
+
+  snap.forEach(child=>{
+    const data=child.val();
+    const key=child.key;
+
+    const wrap=document.createElement("div");
+    wrap.className="itemHorario";
+
+    const titulo=document.createElement("div");
+    titulo.innerHTML=`<b>${data.nombre}</b>`;
+
+    const tablaWrap=document.createElement("div");
+    tablaWrap.className="tablaWrap hidden";
+    tablaWrap.innerHTML=`<table>${data.tabla}</table>`;
+
+    titulo.onclick=()=>toggleTabla(tablaWrap);
+
+    wrap.appendChild(titulo);
+    wrap.appendChild(tablaWrap);
+
+    if(esAdmin){
+      const btnDel=document.createElement("button");
+      btnDel.textContent="🗑️ Borrar";
+      btnDel.onclick=(e)=>{
+        e.stopPropagation();
+        db.ref("horarios/"+key).remove();
+      };
+      wrap.appendChild(btnDel);
     }
 
-    nav {
-      display: flex;
-      gap: 8px;
-      padding: 10px;
-      justify-content: center;
-      background: white;
-      position: sticky;
-      top: 0;
-    }
-
-    button {
-      border: none;
-      padding: 10px 14px;
-      border-radius: 10px;
-      background: #e5e7eb;
-      font-weight: bold;
-    }
-
-    #btnHome {
-      display: none;
-      background: #4f46e5;
-      color: white;
-    }
-
-    .container {
-      padding: 14px;
-      max-width: 600px;
-      margin: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    td, th {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-      font-size: 14px;
-    }
-
-    .card {
-      background: white;
-      border-radius: 14px;
-      margin-bottom: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,.08);
-      overflow: hidden;
-    }
-
-    .card-title {
-      padding: 14px;
-      font-weight: bold;
-      background: #eef2ff;
-      cursor: pointer;
-    }
-
-    .card-content {
-      display: none;
-      padding: 10px;
-    }
-
-    .lock {
-      position: fixed;
-      bottom: 16px;
-      right: 16px;
-      font-size: 24px;
-      background: white;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,.2);
-      cursor: pointer;
-    }
-  </style></head><body>
-  <header>📚 Horarios</header>  <nav>
-    <button id="btnHome">Home</button>
-    <button onclick="verGuardados()">Horarios</button>
-    <button onclick="guardarHorario()">Guardar horario</button>
-  </nav>  <div class="container">
-    <h3>Tu horario (editor)</h3><table id="tabla">
-  <tr>
-    <th>Hora</th>
-    <th>Lunes</th>
-    <th>Martes</th>
-    <th>Miércoles</th>
-    <th>Jueves</th>
-    <th>Viernes</th>
-  </tr>
-  <tr>
-    <td>1</td>
-    <td>Mate</td>
-    <td>Español</td>
-    <td>Inglés</td>
-    <td>Historia</td>
-    <td>Ciencias</td>
-  </tr>
-</table>
-
-<h3>📂 Horarios guardados</h3>
-<div id="listaHorarios"></div>
-
-  </div>  <div class="lock" onclick="desbloquearAdmin()">🔒</div>
-</body>
-  </html>
+    cont.appendChild(wrap);
+  });
+});
+</script></body>
+</html>
