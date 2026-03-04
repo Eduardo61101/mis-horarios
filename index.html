@@ -170,7 +170,7 @@ function crearHorario(){
 
     for(let d=0;d<5;d++){
       const td=document.createElement("td");
-      td.contentEditable = true; // 👈 EDITABLE
+      td.contentEditable = esAdmin; // ✅ solo admin puede editar
       td.textContent = "Materia";
       tr.appendChild(td);
     }
@@ -200,7 +200,7 @@ async function guardarHorario(){
   verGuardados();
 }
 
-// ---------- VER HORARIOS (toggle) ----------
+// ---------- VER HORARIOS ----------
 function verGuardados(){
   mostrar("pantallaGuardados");
 }
@@ -227,6 +227,11 @@ firebase.database().ref("horarios").on("value", snap=>{
     const tablaWrap=document.createElement("div");
     tablaWrap.className="tablaWrap hidden";
     tablaWrap.innerHTML=`<table>${data.tabla}</table>`;
+
+    // ❌ asegurar que NADIE edite los guardados
+    tablaWrap.querySelectorAll("td").forEach(td=>{
+      td.contentEditable = false;
+    });
 
     titulo.onclick=()=>toggleTabla(tablaWrap);
 
