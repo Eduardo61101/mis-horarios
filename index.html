@@ -1,307 +1,229 @@
-<!DOCTYPE html>
-<html lang="es">
+<!DOCTYPE html><html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0" />
-<title>Mis Horarios</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Horarios</title>  <!-- Firebase -->  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-<style>
-*{box-sizing:border-box;font-family:system-ui,Arial}
-body{margin:0;background:#0f172a;color:white}
+    const firebaseConfig = {
+      apiKey: "AIzaSyBBODZcEB4yIm2-UjpjveBy2tr7RDT-hYo",
+      authDomain: "estudio-sermiteop.firebaseapp.com",
+      databaseURL: "https://estudio-sermiteop-default-rtdb.firebaseio.com",
+      projectId: "estudio-sermiteop",
+      storageBucket: "estudio-sermiteop.firebasestorage.app",
+      messagingSenderId: "223030697007",
+      appId: "1:223030697007:web:fe4aa6b863b7ebf521bada",
+      measurementId: "G-NMD0ZC8ZX7"
+    };
 
-.topbar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#020617;position:sticky;top:0;z-index:10}
-.topbar button{background:#334155;color:white;font-size:13px;padding:8px 12px;border:none;border-radius:10px}
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
-header{padding:10px;text-align:center;background:#111827;font-size:18px;font-weight:bold}
-.container{padding:14px;max-width:900px;margin:auto}
+    // ===== ADMIN =====
+    let esAdmin = false;
+    const LLAVE = "Eduardo61101";
 
-button,select,input{padding:10px;border-radius:10px;border:none;margin:6px 4px;font-size:14px}
-button{background:#22c55e;color:black;font-weight:bold}
-button.secondary{background:#334155;color:white}
+    window.desbloquearAdmin = () => {
+      const clave = prompt("🔒 Ingresa la llave");
+      if (clave === LLAVE) {
+        esAdmin = true;
+        document.getElementById("btnHome").style.display = "inline-block";
+        alert("Modo admin activado 😎");
+      } else {
+        alert("Llave incorrecta ❌");
+      }
+    };
 
-.menu{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-
-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
-th,td{border:1px solid #334155;padding:6px;text-align:center}
-th{background:#334155}
-
-.hidden{display:none}
-.card{background:#1e293b;padding:12px;border-radius:14px;margin-top:12px}
-
-.lock-btn{
-  position:fixed;
-  bottom:14px;
-  right:14px;
-  width:52px;
-  height:52px;
-  border-radius:50%;
-  background:#22c55e;
-  color:black;
-  font-size:22px;
-  border:none;
-  box-shadow:0 6px 18px rgba(0,0,0,.4);
-}
-</style>
-</head>
-<body>
-
-<!-- 🔝 BARRA SUPERIOR -->
-<div class="topbar">
-  <button id="btnHome" class="hidden" onclick="volverInicio()">🏠 Home</button>
-  <button id="btnHorarios" onclick="verGuardados()">📚 Horarios</button>
-</div>
-
-<header>📚 Organizador de Horarios</header>
-
-<div class="container">
-
-<!-- HOME (solo admin) -->
-<div id="pantallaInicio" class="card hidden">
-  <div class="menu">
-    <button onclick="irCrear('escolar')">📘 Escolar</button>
-    <button onclick="irCrear('personal')">🗓️ Personal</button>
-    <button onclick="irCrear('actividades')">🏀 Actividades</button>
-    <button onclick="irCrear('extra')">⭐ Extra</button>
-  </div>
-</div>
-
-<!-- CONFIG -->
-<div id="pantallaConfig" class="card hidden">
-  <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>
-
-  <div id="bloqueEscolar">
-    Nivel:
-    <select id="nivel">
-      <option value="primaria">Primaria</option>
-      <option value="secundaria">Secundaria</option>
-      <option value="prepa">Prepa</option>
-      <option value="uni">Universidad</option>
-    </select>
-
-    Grado:
-    <select id="grado"></select>
-
-    Turno:
-    <select id="turno">
-      <option value="manana">Mañana</option>
-      <option value="tarde">Tarde</option>
-    </select>
-
-    Horas:
-    <select id="numHoras">
-      <option>5</option><option>6</option><option>7</option><option>8</option>
-    </select>
-  </div>
-
-  <button onclick="crearHorario()">Crear horario</button>
-</div>
-
-<!-- HORARIO -->
-<div id="pantallaHorario" class="card hidden">
-  <button class="secondary" onclick="volverConfig()">⬅️ Regresar</button>
-  <button id="btnGuardar" class="hidden" onclick="guardarHorario()">💾 Guardar horario</button>
-  <table id="tabla"></table>
-</div>
-
-<!-- LISTA -->
-<div id="pantallaGuardados" class="card">
-  <div id="listaHorarios"></div>
-</div>
-
-</div>
-
-<button class="lock-btn" onclick="pedirLlave()">🔒</button>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBBODZcEB4yIm2-UjpjveBy2tr7RDT-hYo",
-  authDomain: "estudio-sermiteop.firebaseapp.com",
-  databaseURL: "https://estudio-sermiteop-default-rtdb.firebaseio.com",
-  projectId: "estudio-sermiteop",
-  storageBucket: "estudio-sermiteop.firebasestorage.app",
-  messagingSenderId: "223030697007",
-  appId: "1:223030697007:web:fe4aa6b863b7ebf521bada",
-  measurementId: "G-NMD0ZC8ZX7"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-
-const LLAVE = "Eduardo61101";
-let esAdmin = false;
-let modoActual = "escolar";
-
-// 🔐 PEDIR LLAVE
-window.pedirLlave = () => {
-  const k = prompt("🔑 Ingresa la llave");
-  if (k === LLAVE) {
-    esAdmin = true;
-    document.getElementById("btnHome").classList.remove("hidden");
-    document.getElementById("btnGuardar").classList.remove("hidden");
-    mostrar("pantallaInicio");
-    alert("Modo admin activado 😎");
-  } else {
-    alert("Llave incorrecta");
-  }
-};
-
-// ---------- DATOS ----------
-const materiasPorNivel={
-  primaria:["Español","Mate","Ciencias","Inglés","Artes","Educación Física","Tutoría","Curricular"],
-  secundaria:["Mate","Español","Ciencias","Inglés","Historia","F.C.E","Educación Física","Tecnología","Artes","Tutoría"],
-  prepa:["Mate","Física","Química","Inglés","Historia","Ética","Computación","Artes"],
-  uni:["Materia 1","Materia 2","Materia 3","Laboratorio","Proyecto"]
-};
-
-const gradosPorNivel={primaria:6,secundaria:3,prepa:3,uni:8};
-
-const horarios={
-  manana:[
-    ["07:00","07:50"],["07:50","08:40"],["08:40","09:30"],["09:30","10:20"],
-    ["10:20","11:10"],["11:10","12:00"],["12:00","12:50"],["12:50","13:40"]
-  ],
-  tarde:[
-    ["13:00","13:50"],["13:50","14:40"],["14:40","15:30"],["15:30","16:20"],
-    ["16:20","17:10"],["17:10","18:00"],["18:00","18:50"],["18:50","19:40"]
-  ]
-};
-
-// ---------- UI ----------
-function mostrar(id){
-  ["pantallaInicio","pantallaConfig","pantallaHorario","pantallaGuardados"].forEach(x=>{
-    document.getElementById(x).classList.add("hidden");
-  });
-  document.getElementById(id).classList.remove("hidden");
-}
-
-window.volverInicio = () => mostrar("pantallaInicio");
-window.volverConfig = () => mostrar("pantallaConfig");
-
-// ---------- GRADOS ----------
-function cargarGrados(){
-  const nivel=document.getElementById("nivel").value;
-  const sel=document.getElementById("grado");
-  sel.innerHTML="";
-  for(let i=1;i<=gradosPorNivel[nivel];i++){
-    const op=document.createElement("option");
-    op.textContent=i+"°";
-    sel.appendChild(op);
-  }
-}
-document.getElementById("nivel").addEventListener("change",cargarGrados);
-cargarGrados();
-
-// ---------- CREAR ----------
-window.irCrear=(modo)=>{
-  modoActual=modo;
-  mostrar("pantallaConfig");
-};
-
-function crearSelectMateria(){
-  const nivel=document.getElementById("nivel").value;
-  const s=document.createElement("select");
-  materiasPorNivel[nivel].forEach(m=>{
-    const op=document.createElement("option");
-    op.textContent=m;
-    s.appendChild(op);
-  });
-  return s;
-}
-
-window.crearHorario=()=>{
-  mostrar("pantallaHorario");
-  const tabla=document.getElementById("tabla");
-  tabla.innerHTML="";
-
-  tabla.innerHTML="<tr><th>Hora</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th></tr>";
-
-  const turno=document.getElementById("turno").value;
-  const num=parseInt(document.getElementById("numHoras").value);
-
-  for(let i=0;i<num;i++){
-    const [ini,fin]=horarios[turno][i];
-    const tr=document.createElement("tr");
-
-    const tdHora=document.createElement("td");
-    tdHora.textContent=`${ini}-${fin}`;
-    tr.appendChild(tdHora);
-
-    for(let d=0;d<5;d++){
-      const td=document.createElement("td");
-      td.appendChild(crearSelectMateria());
-      tr.appendChild(td);
-    }
-
-    tabla.appendChild(tr);
-  }
-};
-
-// ---------- GUARDAR (FIXED) ----------
-window.guardarHorario = async () => {
-  if (!esAdmin) {
-    alert("🔒 Solo admin");
-    return;
-  }
-
-  const nombre = prompt("Nombre del horario");
-  if (!nombre) return;
-
-  const tablaHTML = document.getElementById("tabla").innerHTML;
-
-  try {
-    await push(ref(db, "horarios"), {
-      nombre,
-      tabla: tablaHTML
-    });
-
-    alert("Guardado ✅");
-    verGuardados();
-
-  } catch (err) {
-    console.error(err);
-    alert("Error al guardar ❌");
-  }
-};
-
-// ---------- VER (FIXED) ----------
-window.verGuardados = () => {
-  mostrar("pantallaGuardados");
-  const cont=document.getElementById("listaHorarios");
-
-  onValue(ref(db,"horarios"),(snap)=>{
-    cont.innerHTML="";
-
-    if(!snap.exists()){
-      cont.innerHTML="No hay horarios";
-      return;
-    }
-
-    snap.forEach(h=>{
-      const data=h.val();
-      const key=h.key;
-
-      let btn="";
-      if(esAdmin){
-        btn=`<button onclick="eliminarHorario('${key}')">🗑️</button>`;
+    // ===== CREAR HORARIO =====
+    window.guardarHorario = async () => {
+      if (!esAdmin) {
+        alert("🔒 Solo admin");
+        return;
       }
 
-      const div=document.createElement("div");
-      div.className="card";
-      div.innerHTML=`<b>${data.nombre}</b> ${btn}<table>${data.tabla}</table>`;
-      cont.appendChild(div);
-    });
-  });
-};
+      const nombre = prompt("Nombre del horario");
+      if (!nombre) return;
 
-window.eliminarHorario=(id)=>{
-  if(!esAdmin) return;
-  if(confirm("¿Borrar horario?")){
-    remove(ref(db,"horarios/"+id));
-  }
-};
-</script>
+      const tablaHTML = document.getElementById("tabla").innerHTML;
+
+      try {
+        await push(ref(db, "horarios"), {
+          nombre,
+          tabla: tablaHTML
+        });
+        alert("Guardado ✅");
+        verGuardados();
+      } catch (err) {
+        console.error(err);
+        alert("Error al guardar ❌");
+      }
+    };
+
+    // ===== VER HORARIOS =====
+    window.verGuardados = () => {
+      const cont = document.getElementById("listaHorarios");
+
+      onValue(ref(db, "horarios"), (snapshot) => {
+        cont.innerHTML = "";
+        const data = snapshot.val();
+        if (!data) {
+          cont.innerHTML = "<p>No hay horarios</p>";
+          return;
+        }
+
+        Object.entries(data).forEach(([id, h]) => {
+          const card = document.createElement("div");
+          card.className = "card";
+
+          const titulo = document.createElement("div");
+          titulo.className = "card-title";
+          titulo.textContent = "📅 " + h.nombre;
+
+          const contenido = document.createElement("div");
+          contenido.className = "card-content";
+          contenido.innerHTML = h.tabla;
+
+          // toggle mostrar/ocultar
+          titulo.onclick = () => {
+            contenido.style.display =
+              contenido.style.display === "none" ? "block" : "none";
+          };
+
+          card.appendChild(titulo);
+          card.appendChild(contenido);
+          cont.appendChild(card);
+        });
+      });
+    };
+
+    // cargar al inicio
+    window.addEventListener("DOMContentLoaded", () => {
+      verGuardados();
+    });
+  </script>  <style>
+    body {
+      font-family: system-ui, Arial;
+      margin: 0;
+      background: #f2f4f8;
+    }
+
+    header {
+      background: #4f46e5;
+      color: white;
+      padding: 12px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    nav {
+      display: flex;
+      gap: 8px;
+      padding: 10px;
+      justify-content: center;
+      background: white;
+      position: sticky;
+      top: 0;
+    }
+
+    button {
+      border: none;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #e5e7eb;
+      font-weight: bold;
+    }
+
+    #btnHome {
+      display: none;
+      background: #4f46e5;
+      color: white;
+    }
+
+    .container {
+      padding: 14px;
+      max-width: 600px;
+      margin: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    td, th {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+      overflow: hidden;
+    }
+
+    .card-title {
+      padding: 14px;
+      font-weight: bold;
+      background: #eef2ff;
+      cursor: pointer;
+    }
+
+    .card-content {
+      display: none;
+      padding: 10px;
+    }
+
+    .lock {
+      position: fixed;
+      bottom: 16px;
+      right: 16px;
+      font-size: 24px;
+      background: white;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,.2);
+      cursor: pointer;
+    }
+  </style></head><body>
+  <header>📚 Horarios</header>  <nav>
+    <button id="btnHome">Home</button>
+    <button onclick="verGuardados()">Horarios</button>
+    <button onclick="guardarHorario()">Guardar horario</button>
+  </nav>  <div class="container">
+    <h3>Tu horario (editor)</h3><table id="tabla">
+  <tr>
+    <th>Hora</th>
+    <th>Lunes</th>
+    <th>Martes</th>
+    <th>Miércoles</th>
+    <th>Jueves</th>
+    <th>Viernes</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td>Mate</td>
+    <td>Español</td>
+    <td>Inglés</td>
+    <td>Historia</td>
+    <td>Ciencias</td>
+  </tr>
+</table>
+
+<h3>📂 Horarios guardados</h3>
+<div id="listaHorarios"></div>
+
+  </div>  <div class="lock" onclick="desbloquearAdmin()">🔒</div>
 </body>
   </html>
