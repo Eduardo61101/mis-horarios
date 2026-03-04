@@ -1,8 +1,11 @@
-<!DOCTYPE html><html lang="es">
+<!DOCTYPE html>
+<html lang="es">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-<title>Mis Horarios</title><style>
+<title>Mis Horarios</title>
+
+<style>
 *{box-sizing:border-box;font-family:system-ui,Arial}
 body{margin:0;background:#0f172a;color:white}
 
@@ -25,50 +28,89 @@ th{background:#334155}
 .hidden{display:none}
 .card{background:#1e293b;padding:12px;border-radius:14px;margin-top:12px}
 
-.lock-btn{position:fixed;bottom:14px;right:14px;width:52px;height:52px;border-radius:50%;background:#22c55e;color:black;font-size:22px;border:none;box-shadow:0 6px 18px rgba(0,0,0,.4)}
-</style></head>
-<body><!-- 🔝 BARRA SUPERIOR --><div class="topbar">
-  <!-- 🔴 Home OCULTO hasta que pongas la llave -->
+.lock-btn{
+  position:fixed;
+  bottom:14px;
+  right:14px;
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  background:#22c55e;
+  color:black;
+  font-size:22px;
+  border:none;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);
+}
+</style>
+</head>
+<body>
+
+<!-- 🔝 BARRA SUPERIOR -->
+<div class="topbar">
   <button id="btnHome" class="hidden" onclick="volverInicio()">🏠 Home</button>
   <button id="btnHorarios" onclick="verGuardados()">📚 Horarios</button>
-</div><header>📚 Organizador de Horarios</header><div class="container"><!-- HOME (solo admin) --><div id="pantallaInicio" class="card hidden">
+</div>
+
+<header>📚 Organizador de Horarios</header>
+
+<div class="container">
+
+<!-- HOME (solo admin) -->
+<div id="pantallaInicio" class="card hidden">
   <div class="menu">
     <button onclick="irCrear('escolar')">📘 Escolar</button>
     <button onclick="irCrear('personal')">🗓️ Personal</button>
     <button onclick="irCrear('actividades')">🏀 Actividades</button>
     <button onclick="irCrear('extra')">⭐ Extra</button>
   </div>
-</div><!-- CONFIG --><div id="pantallaConfig" class="card hidden">
-  <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>  <div id="bloqueEscolar">
+</div>
+
+<!-- CONFIG -->
+<div id="pantallaConfig" class="card hidden">
+  <button class="secondary" onclick="volverInicio()">⬅️ Volver</button>
+
+  <div id="bloqueEscolar">
     Nivel:
     <select id="nivel">
       <option value="primaria">Primaria</option>
       <option value="secundaria">Secundaria</option>
       <option value="prepa">Prepa</option>
       <option value="uni">Universidad</option>
-    </select>Grado:
-<select id="grado"></select>
+    </select>
 
-Turno:
-<select id="turno">
-  <option value="manana">Mañana</option>
-  <option value="tarde">Tarde</option>
-</select>
+    Grado:
+    <select id="grado"></select>
 
-Horas:
-<select id="numHoras">
-  <option>5</option><option>6</option><option>7</option><option>8</option>
-</select>
+    Turno:
+    <select id="turno">
+      <option value="manana">Mañana</option>
+      <option value="tarde">Tarde</option>
+    </select>
 
-  </div><button onclick="crearHorario()">Crear horario</button>
+    Horas:
+    <select id="numHoras">
+      <option>5</option><option>6</option><option>7</option><option>8</option>
+    </select>
+  </div>
 
-</div><!-- HORARIO --><div id="pantallaHorario" class="card hidden">
+  <button onclick="crearHorario()">Crear horario</button>
+</div>
+
+<!-- HORARIO -->
+<div id="pantallaHorario" class="card hidden">
   <button class="secondary" onclick="volverConfig()">⬅️ Regresar</button>
   <button id="btnGuardar" class="hidden" onclick="guardarHorario()">💾 Guardar horario</button>
   <table id="tabla"></table>
-</div><!-- LISTA (visible para todos) --><div id="pantallaGuardados" class="card">
+</div>
+
+<!-- LISTA -->
+<div id="pantallaGuardados" class="card">
   <div id="listaHorarios"></div>
-</div></div><button class="lock-btn" onclick="pedirLlave()">🔒</button>
+</div>
+
+</div>
+
+<button class="lock-btn" onclick="pedirLlave()">🔒</button>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -88,25 +130,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// 🔑
 const LLAVE = "Eduardo61101";
 let esAdmin = false;
 let modoActual = "escolar";
 
-// ---------- ADMIN LOCK ----------
+// 🔐 PEDIR LLAVE
 window.pedirLlave = () => {
   const k = prompt("🔑 Ingresa la llave");
-
   if (k === LLAVE) {
     esAdmin = true;
-
-    // ✅ ahora sí mostrar cosas de admin
     document.getElementById("btnHome").classList.remove("hidden");
     document.getElementById("btnGuardar").classList.remove("hidden");
-
-    // ir al home automáticamente
     mostrar("pantallaInicio");
-
     alert("Modo admin activado 😎");
   } else {
     alert("Llave incorrecta");
@@ -124,8 +159,14 @@ const materiasPorNivel={
 const gradosPorNivel={primaria:6,secundaria:3,prepa:3,uni:8};
 
 const horarios={
-  manana:[["07:00","07:50"],["07:50","08:40"],["08:40","09:30"],["09:30","10:20"],["10:20","11:10"],["11:10","12:00"],["12:00","12:50"],["12:50","13:40"]],
-  tarde:[["13:00","13:50"],["13:50","14:40"],["14:40","15:30"],["15:30","16:20"],["16:20","17:10"],["17:10","18:00"],["18:00","18:50"],["18:50","19:40"]]
+  manana:[
+    ["07:00","07:50"],["07:50","08:40"],["08:40","09:30"],["09:30","10:20"],
+    ["10:20","11:10"],["11:10","12:00"],["12:00","12:50"],["12:50","13:40"]
+  ],
+  tarde:[
+    ["13:00","13:50"],["13:50","14:40"],["14:40","15:30"],["15:30","16:20"],
+    ["16:20","17:10"],["17:10","18:00"],["18:00","18:50"],["18:50","19:40"]
+  ]
 };
 
 // ---------- UI ----------
@@ -198,25 +239,41 @@ window.crearHorario=()=>{
   }
 };
 
-// ---------- GUARDAR ----------
-window.guardarHorario=()=>{
-  if(!esAdmin){ alert("🔒 Solo admin"); return; }
+// ---------- GUARDAR (FIXED) ----------
+window.guardarHorario = async () => {
+  if (!esAdmin) {
+    alert("🔒 Solo admin");
+    return;
+  }
 
-  const nombre=prompt("Nombre del horario");
-  if(!nombre) return;
+  const nombre = prompt("Nombre del horario");
+  if (!nombre) return;
 
-  const tablaHTML=document.getElementById("tabla").innerHTML;
-  push(ref(db,"horarios"),{nombre,tabla:tablaHTML});
-  alert("Guardado ✅");
+  const tablaHTML = document.getElementById("tabla").innerHTML;
+
+  try {
+    await push(ref(db, "horarios"), {
+      nombre,
+      tabla: tablaHTML
+    });
+
+    alert("Guardado ✅");
+    verGuardados();
+
+  } catch (err) {
+    console.error(err);
+    alert("Error al guardar ❌");
+  }
 };
 
-// ---------- VER ----------
-window.verGuardados=()=>{
+// ---------- VER (FIXED) ----------
+window.verGuardados = () => {
   mostrar("pantallaGuardados");
   const cont=document.getElementById("listaHorarios");
 
   onValue(ref(db,"horarios"),(snap)=>{
     cont.innerHTML="";
+
     if(!snap.exists()){
       cont.innerHTML="No hay horarios";
       return;
@@ -226,15 +283,14 @@ window.verGuardados=()=>{
       const data=h.val();
       const key=h.key;
 
-      const div=document.createElement("div");
-      div.className="card";
-
-      let btnEliminar="";
+      let btn="";
       if(esAdmin){
-        btnEliminar=`<button onclick="eliminarHorario('${key}')">🗑️</button>`;
+        btn=`<button onclick="eliminarHorario('${key}')">🗑️</button>`;
       }
 
-      div.innerHTML=`<b>${data.nombre}</b> ${btnEliminar}<table>${data.tabla}</table>`;
+      const div=document.createElement("div");
+      div.className="card";
+      div.innerHTML=`<b>${data.nombre}</b> ${btn}<table>${data.tabla}</table>`;
       cont.appendChild(div);
     });
   });
@@ -246,6 +302,6 @@ window.eliminarHorario=(id)=>{
     remove(ref(db,"horarios/"+id));
   }
 };
-
-</script></body>
-</html>
+</script>
+</body>
+  </html>
